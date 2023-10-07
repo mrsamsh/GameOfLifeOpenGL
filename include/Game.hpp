@@ -9,15 +9,22 @@
 #ifndef GAME_HPP_
 #define GAME_HPP_
 
+#include "Vector.hpp"
+#include "StateStack.hpp"
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <string_view>
 #include <string>
 
-#include "Vector.hpp"
-
 namespace ge
 {
+
+enum class Key
+{
+  Pause,
+  Restart,
+};
 
 class Game
 {
@@ -26,17 +33,23 @@ public:
   ~Game();
 
   int run();
-  virtual void init();
-  virtual void update(float delta);
+  void init();
+  void update(const float delta);
 
-private:
-  bool internal_init();
-  void internal_update(float delta);
+  static bool isKeyJustPressed(Key code);
 
 private:
   GLFWwindow* m_window;
   std::string m_title;
   ivec2 m_size, m_tileSize;
+  StateStack m_stack;
+};
+
+struct KeyState
+{
+  int keyCode;
+  bool current;
+  bool previous;
 };
 
 } // namespace ge
