@@ -1,5 +1,5 @@
-CXXFLAGS=-I./include -std=c++20 -O3
-CFLAGS=-I./include -std=c99 -O3
+CXXFLAGS=-I./include -std=c++20 -O2
+CFLAGS=-I./include -std=c99 -O2
 LFLAGS=-lGLFW
 
 UNAME=$(shell uname)
