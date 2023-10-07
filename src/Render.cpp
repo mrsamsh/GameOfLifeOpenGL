@@ -10,18 +10,17 @@
 #include "Log.hpp"
 #include "ShaderProgram.hpp"
 
-#define OFFSET(a, b) (void*)(offsetof(a, b))
-
 namespace ge
 {
 
 static uint32_t flushCounter;
 
-static constexpr size_t MaxQuads = 10000;
 static GLFWwindow* m_window;
+static ivec2 m_gridSize;
 static ivec2 m_size;
 static ivec2 m_tileSize;
 static ShaderProgram program;
+extern bool pause;
 
 static void framebufferSizeCallback(GLFWwindow* window, int w, int h)
 {
@@ -30,32 +29,29 @@ static void framebufferSizeCallback(GLFWwindow* window, int w, int h)
 
 struct DrawObject
 {
-  uint32_t vao, vbo, ebo;
+  uint32_t vao, vboPos, vboTrans, vboCol;
 };
 
 static DrawObject quadObject;
 
-static void initDrawObjects();
-static void initColorTexture();
+static void initDrawObjects(float side, ivec2 gridSize);
 static void loadProgram();
 static void flush();
 
-static void internalInit()
+static void internalInit(int side, ivec2 gridSize)
 {
-  initDrawObjects();
-  initColorTexture();
+  initDrawObjects((float)side, gridSize);
   loadProgram();
 }
 
 struct Vertex
 {
-  vec3 position;
-  vec2 texCoord;
+  vec2 position;
   vec4 color;
-  float textureIndex;
 };
 
-static Vertex quadVertices[MaxQuads * 4];
+std::vector<vec4> colors;
+std::vector<vec2> translations;
 static size_t totalQuads = 0;
 
 static void initDrawObjects();
@@ -116,7 +112,11 @@ bool Render::Init(GLFWwindow** window, const std::string& title, ivec2 size, ive
       mode->refreshRate);
 
   m_size = ivec2{mode->width, mode->height};
-  m_tileSize = {1, 1};
+  m_tileSize = tileSize;
+  m_gridSize = {
+    m_size.x / m_tileSize.x,
+    m_size.y / m_tileSize.y,
+  };
   AssertReturn(m_window != nullptr, false, "Failed to create window");
   *window = m_window;
   glfwSetFramebufferSizeCallback(m_window, framebufferSizeCallback);
@@ -132,7 +132,7 @@ bool Render::Init(GLFWwindow** window, const std::string& title, ivec2 size, ive
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  internalInit();
+  internalInit(m_tileSize.x, m_gridSize);
   return true;
 }
 
@@ -147,19 +147,23 @@ void Render::end()
 {
   flush();
   glfwSwapBuffers(m_window);
-  Printf("Flushed %d times this frame", flushCounter);
-  flushCounter = 0;
+  // Printf("Flushed %d times this frame", flushCounter);
+  // flushCounter = 0;
 }
 
 void flush()
 {
-  flushCounter++;
   program.use();
   glBindVertexArray(quadObject.vao);
-  glBindBuffer(GL_ARRAY_BUFFER, quadObject.vbo);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quadVertices), quadVertices);
-  glDrawElements(GL_TRIANGLES, totalQuads * 6, GL_UNSIGNED_INT, NULL);
-  totalQuads = 0;
+  glBindBuffer(GL_ARRAY_BUFFER, quadObject.vboTrans);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec2) * translations.size(),
+      translations.data());
+  glBindBuffer(GL_ARRAY_BUFFER, quadObject.vboCol);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec4) * colors.size(),
+      colors.data());
+  glDrawArraysInstanced(GL_TRIANGLES, 0, 6, colors.size());
+  colors.clear();
+  translations.clear();
 }
 
 void Render::Quit()
@@ -167,91 +171,59 @@ void Render::Quit()
   glfwTerminate();
 }
 
-void Render::fillRect(vec2 pos, vec2 size, vec4 color)
+void Render::fillRect(vec2 pos, vec4 color)
 {
-  if (totalQuads == MaxQuads)
-  {
-    flush();
-    totalQuads = 0;
-  }
-  size /= 2.f;
-  quadVertices[totalQuads * 4 + 0].position = vec3(
-      pos.x - size.w, pos.y - size.h, 0.f);
-  quadVertices[totalQuads * 4 + 0].color = color;
-  quadVertices[totalQuads * 4 + 0].textureIndex = 0;
-  quadVertices[totalQuads * 4 + 0].texCoord = {0, 0};
-
-  quadVertices[totalQuads * 4 + 1].position = vec3(
-      pos.x + size.w, pos.y - size.h, 0.f);
-  quadVertices[totalQuads * 4 + 1].color = color;
-  quadVertices[totalQuads * 4 + 1].textureIndex = 0;
-  quadVertices[totalQuads * 4 + 1].texCoord = {1, 0};
-
-  quadVertices[totalQuads * 4 + 2].position = vec3(
-      pos.x + size.w, pos.y + size.h, 0.f);
-  quadVertices[totalQuads * 4 + 2].color = color;
-  quadVertices[totalQuads * 4 + 2].textureIndex = 0;
-  quadVertices[totalQuads * 4 + 2].texCoord = {1, 1};
-
-  quadVertices[totalQuads * 4 + 3].position = vec3(
-      pos.x - size.w, pos.y + size.h, 0.f);
-  quadVertices[totalQuads * 4 + 3].color = color;
-  quadVertices[totalQuads * 4 + 3].textureIndex = 0;
-  quadVertices[totalQuads * 4 + 3].texCoord = {0, 1};
-
-  totalQuads++;
+  translations.push_back(pos);
+  colors.push_back(color);
 }
 
-void initDrawObjects()
+void initDrawObjects(float side, ivec2 gridSize)
 {
-  // populate quadIndices
-  uint32_t quadIndices[MaxQuads * 6];
-  for (size_t i = 0; i < MaxQuads; ++i)
-  {
-    size_t index = i * 6;
-    size_t vertIndex = i * 4;
-    quadIndices[index + 0] = vertIndex + 0;
-    quadIndices[index + 1] = vertIndex + 1;
-    quadIndices[index + 2] = vertIndex + 2;
-    quadIndices[index + 3] = vertIndex + 0;
-    quadIndices[index + 4] = vertIndex + 2;
-    quadIndices[index + 5] = vertIndex + 3;
-  }
+  // float quadVertices[] = {
+  //    0,        0,
+  //    side - 1, 0,
+  //    side - 1, side - 1,
+  //    0,        0,
+  //    side - 1, side - 1,
+  //    0,        side - 1
+  // };
+
+  float s = side * 0.7;
+  float quadVertices[] = {
+     0, 0,
+     s, 0,
+     s, s,
+     0, 0,
+     s, s,
+     0, s
+  };
 
   glGenVertexArrays(1, &quadObject.vao);
-  glGenBuffers(2, &quadObject.vbo);
+  glGenBuffers(3, &quadObject.vboPos);
 
   glBindVertexArray(quadObject.vao);
-  glBindBuffer(GL_ARRAY_BUFFER, quadObject.vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), NULL, GL_DYNAMIC_DRAW);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadObject.ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quadIndices), quadIndices,
+  glBindBuffer(GL_ARRAY_BUFFER, quadObject.vboPos);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices,
       GL_STATIC_DRAW);
 
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-      OFFSET(Vertex, position));
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-      OFFSET(Vertex, texCoord));
-  glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-      OFFSET(Vertex, color));
-  glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-      OFFSET(Vertex, textureIndex));
-
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), 0);
   glEnableVertexAttribArray(0);
-  glEnableVertexAttribArray(1);
-  glEnableVertexAttribArray(2);
-  glEnableVertexAttribArray(3);
-}
 
-void initColorTexture()
-{
-  uint32_t texture;
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-  uint8_t solid_white[] = { 255, 255, 255, 255 };
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-      solid_white);
+  glBindBuffer(GL_ARRAY_BUFFER, quadObject.vboTrans);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vec2) * gridSize.w * gridSize.h, nullptr,
+      GL_DYNAMIC_DRAW);
+
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), 0);
+  glEnableVertexAttribArray(1);
+  glVertexAttribDivisor(1, 1);
+
+  glBindBuffer(GL_ARRAY_BUFFER, quadObject.vboCol);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vec4) * gridSize.w * gridSize.h, nullptr,
+      GL_DYNAMIC_DRAW);
+
+  glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vec4), 0);
+  glEnableVertexAttribArray(2);
+  glVertexAttribDivisor(2, 1);
 }
 
 void loadProgram()
@@ -263,9 +235,9 @@ void loadProgram()
   // vec2 scale(1.f, 1.f);
   // glfwGetWindowContentScale(m_window, &scale.x, &scale.y);
   float l = 0.f;
-  float r = m_size.w * m_tileSize.w;// * scale.x;
+  float r = m_size.w;// * m_tileSize.w;// * scale.x;
   float t = 0;
-  float b = m_size.h * m_tileSize.h;// * scale.y;
+  float b = m_size.h;// * m_tileSize.h;// * scale.y;
   float n = -2.f;
   float f = 2.f;
   // Print(scale, l, r, t,b );

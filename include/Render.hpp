@@ -22,7 +22,7 @@ class Render
 public:
   static bool Init(GLFWwindow** window, const std::string& title, ivec2 size, ivec2 tileSize);
   static void Quit();
-  static void fillRect(vec2 pos, vec2 size, vec4 color);
+  static void fillRect(vec2 pos, vec4 color);
 
 private:
   static void begin();
