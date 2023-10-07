@@ -14,7 +14,6 @@
 #include <chrono>
 #include <thread>
 #include <ctime>
-#include <mutex>
 
 #define EVAL_NEW
 
@@ -39,7 +38,7 @@ ivec2 grid;
 bool pause = false;
 
 int Side = 3;
-const int InitCellsRatio = 20; // %
+const int InitCellsRatio = 12; // %
 
 void keyCallBack(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -191,13 +190,12 @@ inline void evalCell(int index)
 }
 #endif
 
-void updateGrid()
+void calculateNext(std::vector<char>& res)
 {
   int count = grid.w * grid.h;
-#if defined (EVAL_NEW)
-  std::vector<char> res;
+  res.clear();
   res.resize(grid.w * grid.h, 0);
-  int threadNum = 5;
+  int threadNum = 2;
   std::vector<std::thread> threadPool;
 
   auto calcN = [&](int i) {
@@ -360,6 +358,10 @@ void updateGrid()
     threadPool[i].join();
   threadPool.clear();
 
+}
+
+void populateNext(const std::vector<char>& res)
+{
   for (int i = 0; i < grid.w * grid.h; ++i)
   {
     Cell& c = next[i];
@@ -380,20 +382,25 @@ void updateGrid()
       c.fade = MAX(p.fade - 1, 0);
     }
   }
-#else
+}
+
+#ifndef EVAL_NEW
+void updateGrid()
+{
+  int count = grid.w * grid.h;
   for (int i = 0; i < count; ++i)
   {
     evalCell(i);
   }
-#endif
 }
+#endif
 
 void drawGrid()
 {
   // uint32_t totalQuadsDrawn = 0;
   for (int i = 0; i < grid.w * grid.h; ++i)
   {
-    if (current[i].value)
+    if (next[i].value)
     {
       int x = (i % grid.w) * Side;
       int y = (i / grid.w) * Side;
@@ -418,20 +425,30 @@ void drawGrid()
 
 void Game::update(float delta)
 {
-#if defined(EVAL_NEW)
-  std::thread draw(drawGrid);
-#endif
+  std::vector<std::thread> threadPool;
+#ifndef EVAL_NEW
   if (!pause)
   {
-    updateGrid();
+    threadPool.emplace_back(updateGrid);
+    // updateGrid();
   }
-  // std::this_thread::sleep_for(std::chrono::milliseconds(60));
-#if defined(EVAL_NEW)
-  draw.join();
+  threadPool.emplace_back(drawGrid);
+  // drawGrid();
+  for (auto& t : threadPool) t.join();
 #else
-  drawGrid();
+  std::vector<char> res;
+  if (!pause)
+  {
+    threadPool.emplace_back(calculateNext, std::ref(res));
+  }
+  threadPool.emplace_back(drawGrid);
+  for (auto& t : threadPool) t.join();
+  if (!pause)
+    populateNext(res);
 #endif
-  SWAP(current, next);
+  // std::this_thread::sleep_for(std::chrono::milliseconds(60));
+  if (!pause)
+    SWAP(current, next);
 }
 
 bool Game::internal_init()
