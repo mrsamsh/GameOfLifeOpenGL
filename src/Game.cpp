@@ -14,6 +14,9 @@
 #include <chrono>
 #include <thread>
 #include <ctime>
+#include <mutex>
+
+#define EVAL_NEW
 
 namespace ge
 {
@@ -22,15 +25,18 @@ struct Cell
 {
   uint32_t value = 0;
   int32_t fade = 0;
+#ifndef EVAL_NEW
   uint32_t neighbors[8];
+#endif
 };
 
-Cell* cells1;
-Cell* cells2;
+std::vector<Cell> cells1;
+std::vector<Cell> cells2;
 Cell* current;
 Cell* next;
 int maxCells;
 ivec2 grid;
+bool pause = false;
 
 int Side = 3;
 const int InitCellsRatio = 20; // %
@@ -40,6 +46,16 @@ void keyCallBack(GLFWwindow* window, int key, int scancode, int action, int mods
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
   {
     glfwSetWindowShouldClose(window, GLFW_TRUE);
+  }
+  static bool just = true;
+  if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && just)
+  {
+    just = false;
+    pause = !pause;
+  }
+  if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE)
+  {
+    just = true;
   }
 }
 
@@ -56,11 +72,12 @@ int Game::run()
 {
   std::cout << "side: ";
   std::cin >> Side;
+  m_tileSize.w = m_tileSize.h = Side;
   Assert(internal_init(), "Unable to initialize game. Quitting.");
   init();
 
   double lastTime, thisTime, accumulator = 0;
-  float delta;
+  float delta = 1.f / 60.f;
   int frames = 0;
   double start = glfwGetTime();
   int ticks = 0;
@@ -69,7 +86,10 @@ int Game::run()
     lastTime = glfwGetTime();
     internal_update(delta);
     thisTime = glfwGetTime();
-    delta = thisTime - lastTime;
+    while (thisTime - lastTime < delta)
+    {
+      thisTime = glfwGetTime();
+    }
     accumulator += delta;
     frames++;
     ticks++;
@@ -94,8 +114,9 @@ void Game::init()
   grid.w = m_size.w / Side;
   grid.h = m_size.h / Side;
   int totalCell = grid.w * grid.h;
-  cells1 = new Cell[grid.w * grid.h];
-  cells2 = new Cell[grid.w * grid.h];
+  cells1.resize(grid.w * grid.h);
+  cells2.resize(grid.w * grid.h);
+#ifndef EVAL_NEW
   for (int y = 0; y < grid.h; ++y)
   {
     for (int x = 0; x < grid.w; ++x)
@@ -120,6 +141,7 @@ void Game::init()
       cells2[index].neighbors[7] = (x - 1 + grid.w) % grid.w + ((y + 1) % grid.h) * grid.w;
     }
   }
+#endif
   int initialCells = totalCell * InitCellsRatio / 100;
   for (int i = 0; i < initialCells; ++i)
   {
@@ -134,11 +156,12 @@ void Game::init()
       --i;
     }
   }
-  current = cells1;
-  next = cells2;
+  current = cells1.data();
+  next = cells2.data();
   glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 }
 
+#ifndef EVAL_NEW
 inline void evalCell(int index)
 {
   int value = current[current[index].neighbors[0]].value
@@ -166,40 +189,323 @@ inline void evalCell(int index)
     next[index].fade = MAX(current[index].fade - 1, 0);
   }
 }
+#endif
 
 void updateGrid()
 {
   int count = grid.w * grid.h;
+#if defined (EVAL_NEW)
+  std::vector<char> res;
+  res.resize(grid.w * grid.h, 0);
+  int threadNum = 5;
+  std::vector<std::thread> threadPool;
+
+  auto calcN = [&](int i) {
+    int begin = i * (grid.h / threadNum);
+    int end = MIN((i + 1) * grid.h / threadNum, grid.h);
+    for (int y = begin; y < end; ++y)
+    {
+      for (int x = 0; x < grid.w; ++x)
+      {
+        int ni = x + y * grid.w;
+        int pi = x + ((y - 1 + grid.h) % grid.h) * grid.w;
+        res[ni] += current[pi].value;
+      }
+    }
+  };
+
+  auto calcS = [&](int i) {
+    int begin = i * (grid.h / threadNum);
+    int end = MIN((i + 1) * grid.h / threadNum, grid.h);
+    for (int y = begin; y < end; ++y)
+    {
+      for (int x = 0; x < grid.w; ++x)
+      {
+        int ni = x + y * grid.w;
+        int pi = x + ((y + 1) % grid.h) * grid.w;
+        res[ni] += current[pi].value;
+      }
+    }
+  };
+
+  auto calcE = [&](int i) {
+    int begin = i * (grid.h / threadNum);
+    int end = MIN((i + 1) * grid.h / threadNum, grid.h);
+    for (int y = begin; y < end; ++y)
+    {
+      for (int x = 0; x < grid.w; ++x)
+      {
+        int ni = x + y * grid.w;
+        int pi = (x + 1) % grid.w + y * grid.w;
+        res[ni] += current[pi].value;
+      }
+    }
+  };
+
+  auto calcW = [&](int i) {
+    int begin = i * (grid.h / threadNum);
+    int end = MIN((i + 1) * grid.h / threadNum, grid.h);
+    for (int y = begin; y < end; ++y)
+    {
+      for (int x = 0; x < grid.w; ++x)
+      {
+        int ni = x + y * grid.w;
+        int pi = (x - 1 + grid.w) % grid.w + y * grid.w;
+        res[ni] += current[pi].value;
+      }
+    }
+  };
+
+  auto calcNE = [&](int i) {
+    int begin = i * (grid.h / threadNum);
+    int end = MIN((i + 1) * grid.h / threadNum, grid.h);
+    for (int y = begin; y < end; ++y)
+    {
+      for (int x = 0; x < grid.w; ++x)
+      {
+        int ni = x + y * grid.w;
+        int pi = (x + 1) % grid.w + ((y - 1 + grid.h) % grid.h) * grid.w;
+        res[ni] += current[pi].value;
+      }
+    }
+  };
+
+  auto calcNW = [&](int i) {
+    int begin = i * (grid.h / threadNum);
+    int end = MIN((i + 1) * grid.h / threadNum, grid.h);
+    for (int y = begin; y < end; ++y)
+    {
+      for (int x = 0; x < grid.w; ++x)
+      {
+        int ni = x + y * grid.w;
+        int pi = (x - 1 + grid.w) % grid.w + ((y - 1 + grid.h) % grid.h) * grid.w;
+        res[ni] += current[pi].value;
+      }
+    }
+  };
+
+  auto calcSE = [&](int i) {
+    int begin = i * (grid.h / threadNum);
+    int end = MIN((i + 1) * grid.h / threadNum, grid.h);
+    for (int y = begin; y < end; ++y)
+    {
+      for (int x = 0; x < grid.w; ++x)
+      {
+        int ni = x + y * grid.w;
+        int pi = (x + 1) % grid.w + ((y + 1) % grid.h) * grid.w;
+        res[ni] += current[pi].value;
+      }
+    }
+  };
+
+  auto calcSW = [&](int i) {
+    int begin = i * (grid.h / threadNum);
+    int end = MIN((i + 1) * grid.h / threadNum, grid.h);
+    for (int y = begin; y < end; ++y)
+    {
+      for (int x = 0; x < grid.w; ++x)
+      {
+        int ni = x + y * grid.w;
+        int pi = (x - 1 + grid.w) % grid.w + ((y + 1) % grid.h) * grid.w;
+        res[ni] += current[pi].value;
+      }
+    }
+  };
+
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool.emplace_back(calcN, i);
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool[i].join();
+  threadPool.clear();
+
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool.emplace_back(calcS, i);
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool[i].join();
+  threadPool.clear();
+
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool.emplace_back(calcE, i);
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool[i].join();
+  threadPool.clear();
+
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool.emplace_back(calcW, i);
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool[i].join();
+  threadPool.clear();
+
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool.emplace_back(calcNE, i);
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool[i].join();
+  threadPool.clear();
+
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool.emplace_back(calcNW, i);
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool[i].join();
+  threadPool.clear();
+
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool.emplace_back(calcSE, i);
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool[i].join();
+  threadPool.clear();
+
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool.emplace_back(calcSW, i);
+  for (int i = 0; i <= threadNum; ++i)
+    threadPool[i].join();
+  threadPool.clear();
+
+/*
+  std::thread t1([&](){
+        for (int y = 0; y < grid.h; ++y)
+        {
+          for (int x = 0; x < grid.w; ++x)
+          {
+            int ni = x + y * grid.w;
+            int pi = (x + 1) % grid.w + y * grid.w;
+            int pii = (x - 1 + grid.w) % grid.w + y * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = x + ((y + 1) % grid.h) * grid.w;
+            pii = x + ((y - 1 + grid.h) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = (x + 1) % grid.w + ((y + 1) % grid.h) * grid.w;
+            pii = (x - 1 + grid.w) % grid.w + ((y + 1) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = (x - 1 + grid.w) % grid.w + ((y - 1 + grid.h) % grid.h) * grid.w;
+            pii = (x + 1) % grid.w + ((y - 1 + grid.h) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+          }
+        }
+      });
+
+  std::thread t3([&](){
+        for (int y = 0; y < grid.h; ++y)
+        {
+          for (int x = 0; x < grid.w; ++x)
+          {
+            int ni = x + y * grid.w;
+            int pi = (x + 1) % grid.w + y * grid.w;
+            int pii = (x - 1 + grid.w) % grid.w + y * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = x + ((y + 1) % grid.h) * grid.w;
+            pii = x + ((y - 1 + grid.h) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = (x + 1) % grid.w + ((y + 1) % grid.h) * grid.w;
+            pii = (x - 1 + grid.w) % grid.w + ((y + 1) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = (x - 1 + grid.w) % grid.w + ((y - 1 + grid.h) % grid.h) * grid.w;
+            pii = (x + 1) % grid.w + ((y - 1 + grid.h) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+          }
+        }
+      });
+
+  std::thread t5([&](){
+        for (int y = 0; y < grid.h; ++y)
+        {
+          for (int x = 0; x < grid.w; ++x)
+          {
+            int ni = x + y * grid.w;
+            int pi = (x + 1) % grid.w + y * grid.w;
+            int pii = (x - 1 + grid.w) % grid.w + y * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = x + ((y + 1) % grid.h) * grid.w;
+            pii = x + ((y - 1 + grid.h) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = (x + 1) % grid.w + ((y + 1) % grid.h) * grid.w;
+            pii = (x - 1 + grid.w) % grid.w + ((y + 1) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = (x - 1 + grid.w) % grid.w + ((y - 1 + grid.h) % grid.h) * grid.w;
+            pii = (x + 1) % grid.w + ((y - 1 + grid.h) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+          }
+        }
+      });
+
+  std::thread t7([&](){
+        for (int y = 0; y < grid.h; ++y)
+        {
+          for (int x = 0; x < grid.w; ++x)
+          {
+            int ni = x + y * grid.w;
+            int pi = (x + 1) % grid.w + y * grid.w;
+            int pii = (x - 1 + grid.w) % grid.w + y * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = x + ((y + 1) % grid.h) * grid.w;
+            pii = x + ((y - 1 + grid.h) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = (x + 1) % grid.w + ((y + 1) % grid.h) * grid.w;
+            pii = (x - 1 + grid.w) % grid.w + ((y + 1) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+            pi = (x - 1 + grid.w) % grid.w + ((y - 1 + grid.h) % grid.h) * grid.w;
+            pii = (x + 1) % grid.w + ((y - 1 + grid.h) % grid.h) * grid.w;
+            res[ni] += current[pi].value + current[pii].value;
+          }
+        }
+      });
+
+  t1.join();
+  t3.join();
+  t5.join();
+  t7.join();
+*/
+
+  for (int i = 0; i < grid.w * grid.h; ++i)
+  {
+    Cell& c = next[i];
+    Cell& p = current[i];
+    if ((res[i] < 2 || res[i] > 3) && p.value == 1)
+    {
+      c.value = 0;
+      c.fade = 60;
+    }
+    else if (res[i] == 3 && p.value != 1)
+    {
+      c.value = 1;
+      c.fade = 0;
+    }
+    else
+    {
+      c.value = p.value;
+      c.fade = MAX(p.fade - 1, 0);
+    }
+  }
+#else
   for (int i = 0; i < count; ++i)
   {
     evalCell(i);
   }
-  SWAP(current, next);
+#endif
 }
 
 void drawGrid()
 {
-  uint32_t totalQuadsDrawn = 0;
+  // uint32_t totalQuadsDrawn = 0;
   for (int i = 0; i < grid.w * grid.h; ++i)
   {
     if (current[i].value)
     {
-      float x = (i % grid.w) * Side + static_cast<float>(Side) / 2.f;
-      float y = (i / grid.w) * Side + static_cast<float>(Side) / 2.f;
-      Render::fillRect({x, y}, {Side - 1, Side - 1}, {1, 1, 1, 1});
-      totalQuadsDrawn++;
+      int x = (i % grid.w) * Side;
+      int y = (i / grid.w) * Side;
+      Render::fillRect({x, y}, {1, 1, 1, 1});
+      // totalQuadsDrawn++;
     }
     else if (current[i].fade > 0)
     {
-      float x = (i % grid.w) * Side + static_cast<float>(Side) / 2.f;
-      float y = (i / grid.w) * Side + static_cast<float>(Side) / 2.f;
-      Render::fillRect({x, y}, {Side - 1, Side - 1},
+      int x = (i % grid.w) * Side;
+      int y = (i / grid.w) * Side;
+      Render::fillRect({x, y},
           {0.002 * static_cast<float>(current[i].fade),
            0.002 * static_cast<float>(current[i].fade),
            0.008 * static_cast<float>(current[i].fade),
            1}
       );
-      totalQuadsDrawn++;
+      // totalQuadsDrawn++;
     }
   }
   // Print("TotalQuads: ", totalQuadsDrawn);
@@ -207,9 +513,20 @@ void drawGrid()
 
 void Game::update(float delta)
 {
-  updateGrid();
-  drawGrid();
+#if defined(EVAL_NEW)
+  std::thread draw(drawGrid);
+#endif
+  if (!pause)
+  {
+    updateGrid();
+  }
   // std::this_thread::sleep_for(std::chrono::milliseconds(60));
+#if defined(EVAL_NEW)
+  draw.join();
+#else
+  drawGrid();
+#endif
+  SWAP(current, next);
 }
 
 bool Game::internal_init()
@@ -217,7 +534,7 @@ bool Game::internal_init()
   bool rc = Render::Init(&m_window, m_title, m_size, m_tileSize);
   Assert(m_window != nullptr, "SHOT");
 
-  glfwGetWindowSize(m_window, &m_size.w, &m_size.h);
+  glfwGetFramebufferSize(m_window, &m_size.w, &m_size.h);
   glfwSetKeyCallback(m_window, keyCallBack);
   return rc;
 }
