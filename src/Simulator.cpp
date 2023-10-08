@@ -65,6 +65,28 @@ void Simulator::initWithRandom()
 
 bool Simulator::update(const float delta)
 {
+  if (Game::isKeyJustPressed(Key::Pause))
+  {
+    m_stack.requestStateChange(StateChange::Push, StateId::PauseState);
+  }
+  if (Game::isKeyJustPressed(Key::Restart))
+  {
+    m_cells1.clear();
+    m_cells2.clear();
+    m_cells1.resize(m_gridSize.w * m_gridSize.h);
+    m_cells2.resize(m_gridSize.w * m_gridSize.h);
+    m_nextArray = m_cells2.data();
+    m_currentArray = m_cells1.data();
+    initWithRandom();
+  }
+
+  static int accum = 0;
+  accum++;
+  if (accum < UpdateEvery)
+  {
+    return false;
+  }
+  accum = 0;
   std::vector<std::thread> pool;
   int dividor = 8;
   size_t y_stride = m_gridSize.h / (dividor - 1);
@@ -92,21 +114,6 @@ bool Simulator::update(const float delta)
   for (auto& t : pool) t.join();
 
   swapArrays();
-
-  if (Game::isKeyJustPressed(Key::Pause))
-  {
-    m_stack.requestStateChange(StateChange::Push, StateId::PauseState);
-  }
-  if (Game::isKeyJustPressed(Key::Restart))
-  {
-    m_cells1.clear();
-    m_cells2.clear();
-    m_cells1.resize(m_gridSize.w * m_gridSize.h);
-    m_cells2.resize(m_gridSize.w * m_gridSize.h);
-    m_nextArray = m_cells2.data();
-    m_currentArray = m_cells1.data();
-    initWithRandom();
-  }
 
   return false;
 }
