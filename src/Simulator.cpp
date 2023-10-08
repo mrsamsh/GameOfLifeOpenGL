@@ -21,7 +21,16 @@ Simulator::Simulator(StateStack& stack)
     : State{stack}
     , m_pause{false}
 {
-
+  m_fadeColors.resize(FadeGrades);
+  for (int i = 0; i < FadeGrades; ++i)
+  {
+    float t = std::sin((static_cast<float>(i) / FadeGrades) * M_PI_2);
+    float tt = t * t;
+    m_fadeColors[i].x = 0.1f * tt;
+    m_fadeColors[i].y = 0.1f * tt;
+    m_fadeColors[i].z = 0.7f * tt;
+    m_fadeColors[i].w = 1.f;
+  }
 }
 
 void Simulator::init(const ivec2& gridSize, const int side)
@@ -131,7 +140,7 @@ void Simulator::calculateNext(const size_t begin, const size_t end)
     if ((calc < 2 || calc > 3) && cc.value == 1)
     {
       nc.value = 0;
-      nc.fade = 60;
+      nc.fade = FadeGrades;
     }
     else if(calc == 3 && cc.value != 1)
     {
@@ -166,13 +175,9 @@ void Simulator::draw()
       }
       else if (m_nextArray[i].fade > 0)
       {
-        float rg = 0.002 * static_cast<float>(m_nextArray[i].fade);
         Render::fillRect(
             { x * m_side, y * m_side },
-            { rg,
-              rg,
-              0.008 * static_cast<float>(m_nextArray[i].fade),
-              1 }
+            m_fadeColors[m_nextArray[i].fade - 1]
             );
       }
     }

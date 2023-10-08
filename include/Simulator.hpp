@@ -43,12 +43,16 @@ private:
   std::vector<Cell> m_cells2;
   std::vector<int> m_calcs;
 
+  std::vector<vec4> m_fadeColors;
+
   ivec2 m_gridSize;
   int m_side;
   bool m_pause;
+
   Cell* m_currentArray;
   Cell* m_nextArray;
   static constexpr int InitCellsCountPercentage = 6;
+  static constexpr int FadeGrades = 60;
 };
 
 } // namespace ge
