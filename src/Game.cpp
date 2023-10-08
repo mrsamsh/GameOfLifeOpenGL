@@ -101,7 +101,8 @@ int Game::run()
   }
 
   double totalTime = glfwGetTime() - start;
-  Printf("Total ticks: %d, average tick time: %f", ticks, totalTime / (double)ticks);
+  Printf("Total ticks: %d, average tick time: %f", ticks,
+      totalTime / (double)ticks);
 
   return 0;
 }
