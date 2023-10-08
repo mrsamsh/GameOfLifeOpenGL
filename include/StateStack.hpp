@@ -11,7 +11,6 @@
 
 #include "State.hpp"
 
-#include <deque>
 #include <unordered_map>
 #include <memory>
 #include <vector>
@@ -53,6 +52,17 @@ public:
 
   void requestStateChange(StateChange change, StateId id = StateId::None);
 
+  template <A_State T, typename ... Args>
+  void applyAndInitBack(Args&& ... args)
+  {
+    if (m_pendingChanges.size() > 0)
+      applyPendingChanges();
+
+    T* state = dynamic_cast<T*>(m_stack.back().get());
+    if (state != nullptr)
+      state->init(std::forward<Args>(args)...);
+  }
+
   template <A_State T>
   void registerState(StateId id)
   {
@@ -81,7 +91,7 @@ private:
 
 private:
   using StatePtr = std::unique_ptr<State>;
-  std::deque<StatePtr> m_stack;
+  std::vector<StatePtr> m_stack;
   using PendingChange = std::pair<StateChange, StateId>;
   std::vector<PendingChange> m_pendingChanges;
   std::unordered_map<StateId, std::function<State*(StateStack&)>> m_factories;
