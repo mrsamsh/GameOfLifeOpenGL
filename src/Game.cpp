@@ -53,7 +53,6 @@ void Game::init()
   m_stack.registerState<Simulator>(StateId::Simulator);
   m_stack.registerState<PauseState>(StateId::PauseState);
   m_stack.requestStateChange(StateChange::Push, StateId::Simulator);
-  m_stack.update(0);
 }
 
 int Game::run()
@@ -70,11 +69,9 @@ int Game::run()
   Assert(rc, "Unable to initialize game. Quitting.");
 
   init();
+  m_stack.applyAndInitBack<Simulator>(ivec2{m_size.w / side, m_size.h / side}, side);
 
   glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-  auto sim = m_stack.getState<Simulator>();
-  if (sim)
-    sim->init({m_size.w / side, m_size.h / side}, side);
 
   double lastTime, thisTime, accumulator = 0;
   float delta = 1.f / 120.f;
