@@ -7,6 +7,7 @@
 //
 
 #include "StateStack.hpp"
+#include "Game.hpp"
 
 namespace ge
 {
@@ -44,7 +45,7 @@ void StateStack::applyPendingChanges()
     switch(change)
     {
     case StateChange::Push: {
-      m_stack.emplace_back(m_factories[id](*this));
+      m_stack.emplace_back(m_factories[id](Game::Context));
     } break;
     case StateChange::Pop: {
       m_stack.pop_back();

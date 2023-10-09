@@ -17,7 +17,7 @@ namespace ge
 class PauseState : public State
 {
 public:
-  PauseState(StateStack& stack);
+  PauseState(GameContext& context);
 
   bool update(const float) override;
   void draw() override;

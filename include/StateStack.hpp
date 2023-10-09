@@ -52,23 +52,12 @@ public:
 
   void requestStateChange(StateChange change, StateId id = StateId::None);
 
-  template <A_State T, typename ... Args>
-  void applyAndInitBack(Args&& ... args)
-  {
-    if (m_pendingChanges.size() > 0)
-      applyPendingChanges();
-
-    T* state = dynamic_cast<T*>(m_stack.back().get());
-    if (state != nullptr)
-      state->init(std::forward<Args>(args)...);
-  }
-
   template <A_State T>
   void registerState(StateId id)
   {
     assert(m_factories.find(id) == m_factories.end());
-    m_factories[id] = [](StateStack& stack) {
-      return new T(stack);
+    m_factories[id] = [](GameContext& context) {
+      return new T(context);
     };
   }
 
@@ -94,7 +83,7 @@ private:
   std::vector<StatePtr> m_stack;
   using PendingChange = std::pair<StateChange, StateId>;
   std::vector<PendingChange> m_pendingChanges;
-  std::unordered_map<StateId, std::function<State*(StateStack&)>> m_factories;
+  std::unordered_map<StateId, std::function<State*(GameContext&)>> m_factories;
 };
 
 } // namespace ge

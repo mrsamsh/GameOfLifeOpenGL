@@ -21,6 +21,7 @@ namespace ge
 {
 
 static KeyState keyState[2];
+GameContext Game::Context;
 
 void keyCallBack(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -45,7 +46,7 @@ Game::Game(std::string_view title, int width, int height, int tile_w, int tile_h
 , m_tileSize(tile_w, tile_h)
 , m_title(title)
 {
-
+  Context.StateStack = &m_stack;
 }
 
 void Game::init()
@@ -61,15 +62,14 @@ int Game::run()
   std::cout << "side: ";
   std::cin >> side;
   m_tileSize.w = m_tileSize.h = side;
+  Context.Side = side;
 
   bool rc = Render::Init(&m_window, m_title, m_size, m_tileSize);
   Assert(m_window != nullptr, "SHOT");
   glfwGetFramebufferSize(m_window, &m_size.w, &m_size.h);
   glfwSetKeyCallback(m_window, keyCallBack);
   Assert(rc, "Unable to initialize game. Quitting.");
-
   init();
-  m_stack.applyAndInitBack<Simulator>(ivec2{m_size.w / side, m_size.h / side}, side);
 
   glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 

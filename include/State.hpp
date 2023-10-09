@@ -12,19 +12,19 @@
 namespace ge
 {
 
-class StateStack;
+class GameContext;
 
 class State
 {
 public:
-  explicit State(StateStack& stack) : m_stack{stack} { }
+  explicit State(GameContext& context) : m_context{context} { }
   virtual ~State() { }
 
   virtual bool update(const float delta) = 0;
   virtual void draw() = 0;
 
 protected:
-  StateStack& m_stack;
+  GameContext& m_context;
 };
 
 } // namespace ge

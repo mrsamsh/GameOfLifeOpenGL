@@ -7,12 +7,13 @@
 //
 
 #include "PauseState.hpp"
+#include "GameContext.hpp"
 #include "Game.hpp"
 
 namespace ge
 {
 
-PauseState::PauseState(StateStack& stack) : State(stack)
+PauseState::PauseState(GameContext& context) : State(context)
 {
 
 }
@@ -20,7 +21,7 @@ PauseState::PauseState(StateStack& stack) : State(stack)
 bool PauseState::update(const float)
 {
   if (Game::isKeyJustPressed(Key::Pause))
-    m_stack.requestStateChange(StateChange::Pop);
+    m_context.StateStack->requestStateChange(StateChange::Pop);
   return false;
 }
 

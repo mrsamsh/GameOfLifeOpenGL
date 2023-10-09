@@ -9,6 +9,7 @@
 #include "Render.hpp"
 #include "Log.hpp"
 #include "ShaderProgram.hpp"
+#include "Game.hpp"
 
 namespace ge
 {
@@ -117,6 +118,7 @@ bool Render::Init(GLFWwindow** window, const std::string& title, ivec2 size, ive
     m_size.x / m_tileSize.x,
     m_size.y / m_tileSize.y,
   };
+  Game::Context.GridSize = m_gridSize;
   AssertReturn(m_window != nullptr, false, "Failed to create window");
   *window = m_window;
   glfwSetFramebufferSizeCallback(m_window, framebufferSizeCallback);

@@ -11,6 +11,7 @@
 
 #include "Vector.hpp"
 #include "StateStack.hpp"
+#include "GameContext.hpp"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -37,6 +38,7 @@ public:
   void update(const float delta);
 
   static bool isKeyJustPressed(Key code);
+  static GameContext Context;
 
 private:
   GLFWwindow* m_window;
