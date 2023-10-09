@@ -17,20 +17,22 @@
 namespace ge
 {
 
-Simulator::Simulator(StateStack& stack)
-    : State{stack}
+Simulator::Simulator(GameContext& context)
+    : State{context}
     , m_pause{false}
 {
-  m_fadeColors.resize(FadeGrades);
-  for (int i = 0; i < FadeGrades; ++i)
+  m_actualFades = FadeGrades / UpdateEvery;
+  m_fadeColors.resize(m_actualFades);
+  for (int i = 0; i < m_actualFades; ++i)
   {
-    float t = std::sin((static_cast<float>(i) / FadeGrades) * M_PI_2);
+    float t = std::sin((static_cast<float>(i) / m_actualFades) * M_PI_2);
     float tt = t * t;
     m_fadeColors[i].x = 0.1f * tt;
     m_fadeColors[i].y = 0.1f * tt;
     m_fadeColors[i].z = 0.7f * tt;
     m_fadeColors[i].w = 1.f;
   }
+  init(context.GridSize, context.Side);
 }
 
 void Simulator::init(const ivec2& gridSize, const int side)
@@ -67,7 +69,7 @@ bool Simulator::update(const float delta)
 {
   if (Game::isKeyJustPressed(Key::Pause))
   {
-    m_stack.requestStateChange(StateChange::Push, StateId::PauseState);
+    m_context.StateStack->requestStateChange(StateChange::Push, StateId::PauseState);
   }
   if (Game::isKeyJustPressed(Key::Restart))
   {
@@ -147,7 +149,7 @@ void Simulator::calculateNext(const size_t begin, const size_t end)
     if ((calc < 2 || calc > 3) && cc.value == 1)
     {
       nc.value = 0;
-      nc.fade = FadeGrades;
+      nc.fade = m_actualFades;
     }
     else if(calc == 3 && cc.value != 1)
     {

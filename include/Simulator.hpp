@@ -11,6 +11,7 @@
 
 #include "State.hpp"
 #include "Vector.hpp"
+#include "GameContext.hpp"
 
 #include <vector>
 #include <array>
@@ -21,13 +22,13 @@ namespace ge
 class Simulator : public State
 {
 public:
-  Simulator(StateStack& stack);
+  Simulator(GameContext& context);
 
-  void init(const ivec2& gridSize, const int side);
   bool update(const float delta) override;
   void draw() override;
 
 private:
+  void init(const ivec2& gridSize, const int side);
   void initWithRandom();
 
   void calculateNext(const size_t begin, const size_t end);
@@ -48,12 +49,13 @@ private:
   ivec2 m_gridSize;
   int m_side;
   bool m_pause;
+  int m_actualFades;
 
   Cell* m_currentArray;
   Cell* m_nextArray;
   static constexpr int InitCellsCountPercentage = 16;
   static constexpr int FadeGrades = 60;
-  static constexpr int UpdateEvery = 4;
+  static constexpr int UpdateEvery = 3;
 };
 
 } // namespace ge
