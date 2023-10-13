@@ -30,6 +30,7 @@ public:
 private:
   void init(const ivec2& gridSize, const int side);
   void initWithRandom();
+  void initFadeColors();
 
   void calculateNext(const size_t begin, const size_t end);
   void swapArrays();

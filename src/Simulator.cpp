@@ -21,18 +21,9 @@ Simulator::Simulator(GameContext& context)
     : State{context}
     , m_pause{false}
 {
-  m_actualFades = FadeGrades / UpdateEvery;
-  m_fadeColors.resize(m_actualFades);
-  for (int i = 0; i < m_actualFades; ++i)
-  {
-    float t = std::sin((static_cast<float>(i) / m_actualFades) * M_PI_2);
-    float tt = t * t;
-    m_fadeColors[i].x = 0.1f * tt;
-    m_fadeColors[i].y = 0.1f * tt;
-    m_fadeColors[i].z = 0.7f * tt;
-    m_fadeColors[i].w = 1.f;
-  }
   init(context.GridSize, context.Side);
+  initWithRandom();
+  initFadeColors();
 }
 
 void Simulator::init(const ivec2& gridSize, const int side)
@@ -41,7 +32,6 @@ void Simulator::init(const ivec2& gridSize, const int side)
   m_side = side;
   m_cells1.resize(m_gridSize.w * m_gridSize.h);
   m_cells2.resize(m_gridSize.w * m_gridSize.h);
-  initWithRandom();
   m_currentArray = m_cells1.data();
   m_nextArray = m_cells2.data();
 }
@@ -62,6 +52,21 @@ void Simulator::initWithRandom()
     }
     else
       --i;
+  }
+}
+
+void Simulator::initFadeColors()
+{
+  m_actualFades = FadeGrades / UpdateEvery;
+  m_fadeColors.resize(m_actualFades);
+  for (int i = 0; i < m_actualFades; ++i)
+  {
+    float t = std::sin((static_cast<float>(i) / m_actualFades) * M_PI_2);
+    float tt = t * t;
+    m_fadeColors[i].x = 0.1f * tt;
+    m_fadeColors[i].y = 0.1f * tt;
+    m_fadeColors[i].z = 0.7f * tt;
+    m_fadeColors[i].w = 1.f;
   }
 }
 
