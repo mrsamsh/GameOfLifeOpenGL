@@ -9,16 +9,48 @@
 #ifndef UTILITY_HPP_
 #define UTILITY_HPP_
 
-#define SQR(x) ((x) * (x))
-#define ABS(x)           (((x) >= (0)) ? (x) : -(x))
-#define MIN(x, y)        (((x) <= (y)) ? (x) :  (y))
-#define MAX(x, y)        (((x) >= (y)) ? (x) :  (y))
-#define CLAMP(x, l, h) MIN(h, MAX(l, x))
-#define SWAP(a, b) \
-  do {\
-    __typeof__(a) temp = a;\
-    a = b;\
-    b = temp;\
-  } while (0)
+template <typename T>
+constexpr inline T SQR(const T x)
+{
+  return x * x;
+}
+
+template <typename T>
+constexpr inline T ABS(const T x)
+{
+  return x >= 0 ? x : -x;
+}
+
+template <typename T>
+constexpr inline T MIN(const T x, const T y)
+{
+  return x <= y ? x : y;
+}
+
+template <typename T>
+constexpr inline T MAX(const T x, const T y)
+{
+  return x >= y ? x : y;
+}
+
+template <typename T>
+constexpr inline T CLAMP(const T v, const T low, const T high)
+{
+  return MIN(high, MAX(low, v));
+}
+
+template <typename T>
+constexpr inline void SWAP(T& a, T& b)
+{
+  T temp = a;
+  a = b;
+  b = temp;
+}
+
+template <typename T>
+constexpr inline T SNAP(const T x, const int g)
+{
+  return (static_cast<int>(x) / g) * g;
+}
 
 #endif // UTILITY_HPP_
