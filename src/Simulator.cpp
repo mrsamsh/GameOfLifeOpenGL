@@ -30,10 +30,17 @@ void Simulator::init(const ivec2& gridSize, const int side)
 {
   m_gridSize = gridSize;
   m_side = side;
+  init();
+}
+
+void Simulator::init()
+{
+  m_cells1.clear();
+  m_cells2.clear();
   m_cells1.resize(m_gridSize.w * m_gridSize.h);
   m_cells2.resize(m_gridSize.w * m_gridSize.h);
-  m_currentArray = m_cells1.data();
   m_nextArray = m_cells2.data();
+  m_currentArray = m_cells1.data();
 }
 
 void Simulator::initWithRandom()
@@ -78,12 +85,7 @@ bool Simulator::update(const float delta)
   }
   if (Game::isKeyJustPressed(Key::Restart))
   {
-    m_cells1.clear();
-    m_cells2.clear();
-    m_cells1.resize(m_gridSize.w * m_gridSize.h);
-    m_cells2.resize(m_gridSize.w * m_gridSize.h);
-    m_nextArray = m_cells2.data();
-    m_currentArray = m_cells1.data();
+    init();
     initWithRandom();
   }
 
