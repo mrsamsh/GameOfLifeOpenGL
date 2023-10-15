@@ -22,7 +22,7 @@ Simulator::Simulator(GameContext& context)
     , m_pause{false}
 {
   init(context.GridSize, context.Side);
-  initWithRandom();
+  fillWithRandom();
   initFadeColors();
 }
 
@@ -30,10 +30,10 @@ void Simulator::init(const ivec2& gridSize, const int side)
 {
   m_gridSize = gridSize;
   m_side = side;
-  init();
+  reset();
 }
 
-void Simulator::init()
+void Simulator::reset()
 {
   m_cells1.clear();
   m_cells2.clear();
@@ -43,7 +43,7 @@ void Simulator::init()
   m_currentArray = m_cells1.data();
 }
 
-void Simulator::initWithRandom()
+void Simulator::fillWithRandom()
 {
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -85,8 +85,8 @@ bool Simulator::update(const float delta)
   }
   if (Game::isKeyJustPressed(Key::Restart))
   {
-    init();
-    initWithRandom();
+    reset();
+    fillWithRandom();
   }
 
   static int accum = 0;

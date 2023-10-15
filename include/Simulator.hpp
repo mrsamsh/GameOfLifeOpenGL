@@ -28,9 +28,9 @@ public:
   void draw() override;
 
 private:
-  void init();
   void init(const ivec2& gridSize, const int side);
-  void initWithRandom();
+  void reset();
+  void fillWithRandom();
   void initFadeColors();
 
   void calculateNext(const size_t begin, const size_t end);
