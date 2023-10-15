@@ -39,6 +39,7 @@ public:
 
   static bool isKeyJustPressed(Key code);
   static GameContext Context;
+  static vec2 getMousePosition();
 
 private:
   GLFWwindow* m_window;

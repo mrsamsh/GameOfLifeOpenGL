@@ -22,6 +22,7 @@ namespace ge
 
 static KeyState keyState[2];
 GameContext Game::Context;
+static vec2T<double> mousePos;
 
 void keyCallBack(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -117,6 +118,7 @@ void Game::update(const float delta)
   Render::begin();
   m_stack.draw();
   Render::end();
+  glfwGetCursorPos(m_window, &mousePos.x, &mousePos.y);
   glfwPollEvents();
 }
 
@@ -129,6 +131,11 @@ bool Game::isKeyJustPressed(Key code)
 {
   return keyState[static_cast<int>(code)].current 
      && !keyState[static_cast<int>(code)].previous;
+}
+
+vec2 Game::getMousePosition()
+{
+  return vec2(mousePos);
 }
 
 } // namespace ge
