@@ -98,7 +98,7 @@ bool Simulator::update(const float delta)
   accum = 0;
   std::vector<std::thread> pool;
   int dividor = 8;
-  size_t y_stride = m_gridSize.h / (dividor - 1);
+  int y_stride = m_gridSize.h / (dividor - 1);
   for (int i = 0; i < dividor; i = i + 2)
   {
     pool.emplace_back(
