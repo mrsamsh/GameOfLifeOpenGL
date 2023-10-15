@@ -55,7 +55,7 @@ public:
   template <A_State T>
   void registerState(StateId id)
   {
-    assert(m_factories.find(id) == m_factories.end());
+    assert(!m_factories.contains(id));
     m_factories[id] = [](GameContext& context) {
       return new T(context);
     };
