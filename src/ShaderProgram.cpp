@@ -30,9 +30,12 @@ static const char* ShadersLut(GLenum type)
 
 static uint32_t compileShader(std::string_view filename, GLenum type)
 {
-  ReadBuffer buffer(filename);
+  auto buffer = File::read(filename);
+  if (!buffer)
+    ErrorReturn(-1, "Failed to create %s from %s", ShadersLut(type),
+        filename.data());
   uint32_t shader = glCreateShader(type);
-  const char* source = buffer.charBuffer();
+  const char* source = buffer->c_str();
   glShaderSource(shader, 1, &source, NULL);
   glCompileShader(shader);
   int success;
@@ -42,9 +45,8 @@ static uint32_t compileShader(std::string_view filename, GLenum type)
     char log[512];
     glGetShaderInfoLog(shader, 512, NULL, log);
     glDeleteShader(shader);
-    std::string name(filename);
     ErrorReturn(-1, "Failed to compile %s from %s: %s", ShadersLut(type),
-        name.c_str(), log);
+        filename.data(), log);
   }
   return shader;
 }
