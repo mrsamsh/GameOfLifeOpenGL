@@ -15,18 +15,12 @@
 namespace ge
 {
 
-class ReadBuffer
+namespace File
 {
-public:
-  ReadBuffer(std::string_view filename);
-  bool isValid() const;
-  const std::string& string() const;
-  const char* charBuffer() const;
 
-private:
-  bool m_valid;
-  std::string m_data;
-};
+std::optional<std::string> read(std::string_view filename);
+
+} // namespace File
 
 } // namespace ge
 

@@ -16,35 +16,17 @@
 namespace ge
 {
 
-ReadBuffer::ReadBuffer(std::string_view filename)
-: m_valid(false)
-, m_data()
+std::optional<std::string> File::read(std::string_view filename)
 {
   std::ifstream file(filename, std::ifstream::binary);
   if (!file.is_open())
   {
-    std::string name(filename);
-    ErrorReturn(, "Failed to open file %s", name.c_str());
+    ErrorReturn(std::nullopt, "Failed to open file %s", filename.data());
   }
   std::stringstream ss;
   ss << file.rdbuf();
-  m_data = ss.str();
   file.close();
-}
-
-bool ReadBuffer::isValid() const
-{
-  return m_valid;
-}
-
-const std::string& ReadBuffer::string() const
-{
-  return m_data;
-}
-
-const char* ReadBuffer::charBuffer() const
-{
-  return m_data.c_str();
+  return ss.str();
 }
 
 } // namespace ge
