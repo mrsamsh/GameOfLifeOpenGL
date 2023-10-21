@@ -134,7 +134,7 @@ void Simulator::calculateNext(const size_t begin, const size_t end)
     size_t x = i % m_gridSize.w;
     size_t y = i / m_gridSize.w;
     int calc =
-        m_currentArray[(x + 1) % m_gridSize.w 
+        m_currentArray[(x + 1) % m_gridSize.w
                 + y * m_gridSize.w].value
       + m_currentArray[(x - 1 + m_gridSize.w) % m_gridSize.w
                 + y * m_gridSize.w].value
@@ -142,11 +142,11 @@ void Simulator::calculateNext(const size_t begin, const size_t end)
                 + ((y + 1) % m_gridSize.h) * m_gridSize.w].value
       + m_currentArray[x
                 + ((y - 1 + m_gridSize.h) % m_gridSize.h) * m_gridSize.w].value
-      + m_currentArray[(x + 1) % m_gridSize.w 
+      + m_currentArray[(x + 1) % m_gridSize.w
                 + ((y + 1) % m_gridSize.h) * m_gridSize.w].value
       + m_currentArray[(x - 1 + m_gridSize.w) % m_gridSize.w
                 + ((y - 1 + m_gridSize.h) % m_gridSize.h) * m_gridSize.w].value
-      + m_currentArray[(x + 1) % m_gridSize.w 
+      + m_currentArray[(x + 1) % m_gridSize.w
                 + ((y - 1 + m_gridSize.h) % m_gridSize.h) * m_gridSize.w].value
       + m_currentArray[(x - 1 + m_gridSize.w) % m_gridSize.w
                 + ((y + 1) % m_gridSize.h) * m_gridSize.w].value;
