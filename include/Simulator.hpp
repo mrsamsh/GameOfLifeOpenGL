@@ -51,6 +51,7 @@ private:
   ivec2 m_gridSize;
   int m_side;
   bool m_pause;
+  bool m_resetRequested;
   int m_actualFades;
 
   Cell* m_currentArray;

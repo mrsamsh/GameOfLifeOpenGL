@@ -20,6 +20,7 @@ namespace ge
 Simulator::Simulator(GameContext& context)
     : State{context}
     , m_pause{false}
+    , m_resetRequested{false}
 {
   init(context.GridSize, context.Side);
   fillWithRandom();
@@ -85,8 +86,7 @@ bool Simulator::update(const float delta)
   }
   if (Game::isKeyJustPressed(Key::Restart))
   {
-    reset();
-    fillWithRandom();
+    m_resetRequested = true;
   }
 
   static int accum = 0;
@@ -123,6 +123,13 @@ bool Simulator::update(const float delta)
   for (auto& t : pool) t.join();
 
   swapArrays();
+
+  if (m_resetRequested)
+  {
+    m_resetRequested = false;
+    reset();
+    fillWithRandom();
+  }
 
   return false;
 }
