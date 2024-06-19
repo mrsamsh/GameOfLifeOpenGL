@@ -11,6 +11,7 @@
 
 #include <string_view>
 #include <string>
+#include <optional>
 
 namespace ge
 {
